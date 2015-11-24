@@ -12,11 +12,11 @@ open System.Collections.Generic
 
       let arrow = "→"
 
-      let md5p = new MD5CryptoServiceProvider()
+      let private md5p = new MD5CryptoServiceProvider()
 
-      let md5 (x : int) = (BitConverter.GetBytes x |> md5p.ComputeHash |> BitConverter.ToString).GetHashCode()
+      let private md5 (x : int) = (BitConverter.GetBytes x |> md5p.ComputeHash |> BitConverter.ToString).GetHashCode()
 
-      let md5s (x : string) = (Encoding.ASCII.GetBytes x |> md5p.ComputeHash |> BitConverter.ToString).GetHashCode()
+      let private md5s (x : string) = (Encoding.ASCII.GetBytes x |> md5p.ComputeHash |> BitConverter.ToString).GetHashCode()
 
       type Term = 
         | Variable of char
@@ -57,33 +57,29 @@ open System.Collections.Generic
 
         override x.GetHashCode() =
           match x with
-            | Indexed i -> i |> md5
-            | Free c -> (int c) |> md5
-            | Apply(l, r) -> (l.GetHashCode().ToString() + r.GetHashCode().ToString()) |> md5s
+            | Indexed i -> md5 i
+            | Free c -> md5 (int c)
+            | Apply(l, r) -> md5s (l.GetHashCode().ToString() + r.GetHashCode().ToString())
             | Abstract(b, _) -> b.GetHashCode() |> md5
 
+        interface IEquatable<TermI> with
+          member this.Equals t =
+             match (t, this) with
+              | (Apply(l, r), Apply(lt, rt)) -> l.Equals(lt) && r.Equals(rt)
+              | (Indexed i, Indexed j) -> i = j
+              | (Free n, Free m) -> n.Equals m
+              | (Abstract(b, _), Abstract(c, _)) -> b.Equals c 
+              | _ -> false
+       
         override x.Equals y =
           match y with
             | :? TermI as t -> x.Equals t
             | _ -> false
 
-        interface IEquatable<TermI> with
-          member this.Equals t =
-             match t with
-              | Apply(l, r) ->
-                  match this with 
-                    | Apply(lt, rt) -> l.Equals(lt) && r.Equals(rt) | _ -> false
-              | Indexed i ->
-                  match this with
-                    | Indexed j -> i = j | _ -> false  
-              | Free n ->
-                  match this with
-                    | Free m -> n.Equals m | _ -> false
-              | Abstract(b, _) ->
-                  match this with
-                    | Abstract(c, _) -> b.Equals c | _ -> false
-
-      let rec FV (t : TermI) =
+        static member op_Equality(a : TermI, b : TermI) =
+          a.Equals b
+ 
+      let rec private FV (t : TermI) =
         match t with
           | Indexed _ -> []
           | Free c -> [c]
@@ -99,7 +95,7 @@ open System.Collections.Generic
             | Term.Apply(l, r) ->
               TermI.Apply (toi l t, toi r t)
             | Term.Variable n ->
-              match List.tryFind (fun (y, z) -> y.Equals n) t with
+              match List.tryFind (fun (y, _) -> y.Equals n) t with
                 | Some(x, y) -> TermI.Indexed y
                 | None -> TermI.Free n
             | Term.Meta(a, b) -> raise (NotImplementedException "TODO")
@@ -112,17 +108,17 @@ open System.Collections.Generic
             | TermI.Abstract(b, h) ->
               let nsb = !ns in 
               let fv = FV b in
-              let fvc a = fv.Contains a in
+              let fvc a = Seq.contains a fv in
               let rec getv () =
                 let a = nsb.Pop() in
                 let f () = if fvc a then let a' = getv () in (nsb.Push a; a') else a in
                 match h with
-                  | Some(c) when (not (nsb.Contains c)) ->
+                  | Some(c) when (not (Seq.contains c nsb)) ->
                     f ()
                   | None ->
                     f ()
                   | Some(c) ->
-                    nsb.Push a; ns := Stack(nsb.Where((<>) c)); c
+                    nsb.Push a; ns := Stack(Seq.filter ((<>) c) nsb); c
               in 
               let n = getv () in s.Push n;
               let t = Term.Abstract (n, tot b s) in
