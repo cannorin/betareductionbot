@@ -57,9 +57,9 @@
     <None Include="App.config" />
     <Content Include="packages.config" />
     <Compile Include="AssemblyInfo.fs" />
+    <Compile Include="Utils.fs" />
     <Compile Include="Exception.fs" />
     <Compile Include="Ast.fs" />
-    <Compile Include="Utils.fs" />
     <Compile Include="Transform.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
@@ -78,6 +78,10 @@
     </Reference>
     <Reference Include="Newtonsoft.Json">
       <HintPath>..\packages\Newtonsoft.Json.4.5.11\lib\net40\Newtonsoft.Json.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="ScanRat">
+      <HintPath>..\packages\ScanRat.0.4.0.0\lib\net40\ScanRat.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="System" />

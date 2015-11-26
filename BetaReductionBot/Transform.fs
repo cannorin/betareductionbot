@@ -14,10 +14,10 @@ module Transform =
 
       let rec shift t c d =
         match t with
-            | Free _ -> t
-            | Indexed(k)  -> TermI.Indexed(if k < c then k else k + d)
-            | Abstract(b, h) -> TermI.Abstract((shift b (c + 1) d), h)
-            | Apply(l, r) -> TermI.Apply(shift l c d, shift r c d)
+          | Free _ -> t
+          | Indexed(k)  -> TermI.Indexed(if k < c then k else k + d)
+          | Abstract(b, h) -> TermI.Abstract((shift b (c + 1) d), h)
+          | Apply(l, r) -> TermI.Apply(shift l c d, shift r c d)
 
       let rec replace t1 t2 i =
         match t1 with
