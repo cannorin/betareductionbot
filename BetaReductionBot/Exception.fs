@@ -11,6 +11,7 @@ module Exception =
       | Unreducible
       | InfiniteReduction
       | WrongSyntax
+      | MetaVariableFailed
 
     type BetaReducerException(s : string, b : option<Bitmap>, es : ErrorState) =
       inherit Exception(s)

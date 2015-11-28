@@ -20,9 +20,10 @@ module Utils =
           let b = new Bitmap(width, height) in
           use g = Graphics.FromImage b in
           let r = RectangleF(float32 margin, float32 margin, float32 (width - margin) * 2.0f, float32 (height - margin) * 2.0f) in
-                g.FillRectangle(Brushes.White, g.ClipBounds);
-                g.DrawString(String.Join("\n", lines), f, Brushes.Black, r);
-                b
+          g.FillRectangle(Brushes.White, g.ClipBounds);
+          g.DrawString(String.Join("\n", lines), f, Brushes.Black, r);
+          b
+
       end
 
   end
