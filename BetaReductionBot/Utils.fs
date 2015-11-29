@@ -11,7 +11,7 @@ module Utils =
     module ImageBuilder =
       begin
         let build (lines : string[]) fontsize marginscale =
-          let fs = defaultArg fontsize 8 in
+          let fs = defaultArg fontsize 15 in
           let ms = defaultArg marginscale 2 in
           use f = new Font ("STIX", float32 fs) in
           let margin = ms * fs / 2 in

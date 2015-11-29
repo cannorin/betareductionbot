@@ -47,7 +47,7 @@ module Transform =
                   | Abstract(b, _) -> 
                     [ shift (replace b (shift r 0 1) 0) 0 -1 ]
                   | _ -> []
-              in List.concat [a; List.map (fun x -> TermI.Apply (x, r)) (doReduce l (i + 1)); List.map (fun x -> TermI.Apply (x, r)) (doReduce r (i + 1));]
+              in List.concat [a; List.map (fun x -> TermI.Apply (x, r)) (doReduce l (i + 1)); List.map (fun x -> TermI.Apply (l, x)) (doReduce r (i + 1));]
 
       member this.reduce t =
         ct := t;
