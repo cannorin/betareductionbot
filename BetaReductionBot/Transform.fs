@@ -34,7 +34,7 @@ module Transform =
         else if hist.Contains t then
           let ctb = !ct in
           let e = List.concat [Seq.toList hist; (if t = ctb then [t] else [ctb; t])] in
-          let image = ImageBuilder.build (e |> List.mapi (fun i x -> if i > 0 then Ast.arrow + x.ToString() else x.ToString()) |> Enumerable.ToArray) None None in
+          let image = ImageBuilder.build (e |> List.mapi (fun i x -> let x = Ast.toTerm x in if i > 0 then Ast.arrow + x.ToString() else x.ToString()) |> Enumerable.ToArray) None None in
           raise (BetaReducerException("Infinite reduction", Some(image), ErrorState.InfiniteReduction))
         
         else 
@@ -60,7 +60,7 @@ module Transform =
                 this.reduce x
 
       member this.toBitmap () =
-        ImageBuilder.build (Seq.map Ast.toTerm hist |> Seq.mapi (fun i x -> if i > 0 then Ast.arrow + x.ToString() else x.ToString()) |> Enumerable.ToArray) (Some 15) (Some 2)
+        ImageBuilder.build (Seq.map Ast.toTerm hist |> Seq.mapi (fun i x -> if i > 0 then Ast.arrow + x.ToString() else x.ToString()) |> Enumerable.ToArray) None None
 
     type TermConverter (x : option<Dictionary<string, TermI>>) =
       let dict = 

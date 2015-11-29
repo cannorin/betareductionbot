@@ -1,5 +1,6 @@
 ﻿namespace BetaReductionBot
 open System
+open System.Linq
 open BetaReductionBot.Ast
 open BetaReductionBot.Exception
 open ScanRat
@@ -37,7 +38,7 @@ module Parser =
         
         let term : ScanRatCombinators.Parser<Term> = production "term"
         let var = ss name --> fun x -> Term.Variable x
-        let abs = ((parstart + prefix) +. (((tfold_d "args" (name --> fun x -> x.ToString()) add) --> fun x -> x.ToCharArray() |> Seq.rev) .+ sep)) + term .+ parend --> fun(x, y) -> toAbs x y
+        let abs = ((parstart + prefix) +. (((tfold_d "args" (name --> fun x -> x.ToString()) add) --> fun x -> x.ToCharArray() |> Enumerable.Reverse) .+ sep)) + term .+ parend --> fun(x, y) -> toAbs x y
         let meta = (spaces + meta) +. (tfold_d "name" (name --> fun x -> x.ToString()) add) .+ spaces --> fun x -> Term.Meta(Some x, None)
         let numt = spaces +. num .+ spaces --> fun x -> Term.Meta(None, Some x)
         let apply : ScanRatCombinators.Parser<Term> = production "apply"

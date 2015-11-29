@@ -62,22 +62,25 @@ open System.Collections.Generic
             | Apply(l, r) -> md5s (l.GetHashCode().ToString() + r.GetHashCode().ToString())
             | Abstract(b, _) -> b.GetHashCode() |> md5
 
-        interface IEquatable<TermI> with
-          member this.Equals t =
-             match (t, this) with
+        member this.TEquals t =
+          match (t, this) with
               | (Apply(l, r), Apply(lt, rt)) -> l.Equals(lt) && r.Equals(rt)
               | (Indexed i, Indexed j) -> i = j
               | (Free n, Free m) -> n.Equals m
               | (Abstract(b, _), Abstract(c, _)) -> b.Equals c 
               | _ -> false
+
+        interface IEquatable<TermI> with
+          member this.Equals t =
+            this.TEquals t
        
         override x.Equals y =
           match y with
-            | :? TermI as t -> x.Equals t
+            | :? TermI as t -> x.TEquals t
             | _ -> false
 
         static member op_Equality(a : TermI, b : TermI) =
-          a.Equals b
+          a.TEquals b
  
       let rec private FV (t : TermI) =
         match t with
@@ -108,17 +111,17 @@ open System.Collections.Generic
             | TermI.Abstract(b, h) ->
               let nsb = !ns in 
               let fv = FV b in
-              let fvc a = Seq.contains a fv in
+              let fvc a = Enumerable.Contains(fv, a) in
               let rec getv () =
                 let a = nsb.Pop() in
-                let f () = if fvc a then let a' = getv () in (nsb.Push a; a') else a in
+                let f () = if fvc a then let a' = getv () in (nsb.Push(a); a') else a in
                 match h with
-                  | Some(c) when (not (Seq.contains c nsb)) ->
+                  | Some(c) when (not (Enumerable.Contains(nsb, c))) ->
                     f ()
                   | None ->
                     f ()
                   | Some(c) ->
-                    nsb.Push a; ns := Stack(Seq.filter ((<>) c) nsb); c
+                    nsb.Push a; ns := Stack(Seq.filter ((<>) c) nsb |> Enumerable.Reverse); c
               in 
               let n = getv () in s.Push n;
               let t = Term.Abstract (n, tot b s) in
