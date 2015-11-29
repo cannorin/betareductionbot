@@ -42,7 +42,7 @@ module Transform =
             | Free _ | Indexed _ -> []
             | Abstract(b, h) -> List.map (fun x -> TermI.Abstract (x, h)) (doReduce b (i + 1))
             | Apply(l, r) ->
-              let a = 
+              let a =
                 match l with
                   | Abstract(b, _) -> 
                     [ shift (replace b (shift r 0 1) 0) 0 -1 ]
@@ -104,21 +104,32 @@ module Transform =
         dadd "cdr" "(^p.p(^xy.y))";
         dadd "isnil" "(^l.l(^htd.(^xy.y))(^xy.x))";
       
-      member this.toTermI (x : Term) =
-        match x with
-          | Meta(Some s, None) -> 
-            if dict.ContainsKey s
-            then dict.[s] 
-            else BetaReducerException (String.Format("Meta variable '{0}' is not defined", s), None, ErrorState.MetaVariableFailed) |> raise
-          | Meta(None, Some i) -> 
-            let rec c i =
-              if i = 0 then
-                Term.Variable('x')
-              else
-                Term.Apply(Term.Variable('f'), c(i - 1))
-            in
-            Term.Abstract('f', Term.Abstract('x', c i)) |> Ast.toTermI
-          | _ -> Ast.toTermI x
+      member this.toTermI (t : Term) =
+        let rec toi x t =
+          match x with
+            | Meta(Some s, None) -> 
+              if dict.ContainsKey s
+              then dict.[s] 
+              else BetaReducerException (String.Format("Meta variable '{0}' is not defined", s), None, ErrorState.MetaVariableFailed) |> raise
+            | Meta(None, Some i) -> 
+              let rec c i =
+                if i = 0 then
+                  Term.Variable('x')
+                else
+                  Term.Apply(Term.Variable('f'), c(i - 1))
+              in
+              Term.Abstract('f', Term.Abstract('x', c i)) |> Ast.toTermI
+            | Meta(_, _) -> BetaReducerException("will not thrown", None, ErrorState.MetaVariableFailed) |> raise
+            | Term.Abstract(a, b) ->
+                let t = List.map (fun (x, y) -> (x, y + 1)) t in
+                TermI.Abstract (toi b ((a, 0) :: t), Some a)
+            | Term.Apply(l, r) ->
+                TermI.Apply (toi l t, toi r t)
+            | Term.Variable n ->
+              match List.tryFind (fun (y, _) -> y.Equals n) t with
+                | Some(x, y) -> TermI.Indexed y
+                | None -> TermI.Free n
+        in toi t []
 
       member this.toTerm x = Ast.toTerm x
 
