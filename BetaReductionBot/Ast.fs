@@ -38,6 +38,8 @@ open System.Collections.Generic
                   | Abstract(c, t) -> (c.ToString(), t.ToString())
                   | _ -> raise (System.InvalidOperationException "will not thrown")
               in let (a, b) = getargs x in System.String.Format ("(λ{0}.{1})", a, b)
+            | Meta(Some s, None) -> "(&" + s + ")"
+            | Meta(None, Some i) -> i.ToString()
             | Meta (_, _) -> "{meta}"
 
       [<CustomEquality; NoComparison>]
