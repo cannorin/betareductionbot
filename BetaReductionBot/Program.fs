@@ -101,12 +101,12 @@ open System.Drawing.Imaging
           match s with
             | Regex @".*@b_rdct\s*((?:\s-noimage|\s-ni)?)\s+(.+)\s+:b=\s+(.+)" [b; n; t] ->
               reduceanddec n t (String.IsNullOrEmpty b)
-            | Regex @".*@b_rdct\s*((?:\s-noimage|\s-ni)?)\s+(.*)" [b; t] ->
-              reduce t (String.IsNullOrEmpty b)
             | Regex @".*@b_rdct\s+([^ ]+)\s*:=\s*(.+)" [n; t] ->
               decvar n t
             | Regex @".*@b_rdct\s+(?:-showvars|-sv).*" [] ->
               showvars ()
+            | Regex @".*@b_rdct\s*((?:\s-noimage|\s-ni)?)\s+(.*)" [b; t] ->
+              reduce t (String.IsNullOrEmpty b)
             | _ -> ("Wrong syntax", None)
         with
           | :? BetaReducerException as e -> (e.Message, e.ErrorImage)
