@@ -25,7 +25,6 @@
     <DocumentationFile>bin\Debug\BetaReductionBot.XML</DocumentationFile>
     <Prefer32Bit>true</Prefer32Bit>
     <ConsolePause>false</ConsolePause>
-    <Commandlineparameters>--debug</Commandlineparameters>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>

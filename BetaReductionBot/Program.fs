@@ -3,6 +3,7 @@ open BetaReductionBot.Ast
 open BetaReductionBot.Transform
 open BetaReductionBot.Parser
 open BetaReductionBot.Exception
+open BetaReductionBot.Utils
 open CoreTweet
 open CoreTweet.Streaming
 open FSharp.Control.Reactive
@@ -18,6 +19,7 @@ open System.Runtime.Serialization
 open System.Text.RegularExpressions
 open System.Xml
 open System.Threading
+open System.Threading.Tasks
 open System.Drawing
 open System.Drawing.Imaging
 
@@ -56,15 +58,38 @@ open System.Drawing.Imaging
         t.DirectMessages.NewAsync(ownerId, text = s) |> ignore;
         Console.WriteLine(s)
 
-      let tryparse s b =
-        try 
-          let t = parser.parse s in
-          let br = BetaReducer () in
-          let res = tc.toTermI t |> br.reduce |> tc.toTerm in
-          let img = br.toBitmap () in
-          ((if (res.ToString().Length > 80 && b) then "(image)" else res.ToString()), if b then Some(img) else None)
-        with  
-          | e -> reraise ()
+      let reduce s b =
+        let t = parser.parse s in
+        let br = BetaReducer () in
+        let res = tc.toTermI t |> br.reduce |> tc.toTerm in
+        let img = br.toBitmap () in
+        ((if (res.ToString().Length > 80 && b) then "(image)" else res.ToString()), if b then Some img else None)
+
+      let decvar n s =
+        let t  = parser.parse s in
+        (new Task(fun () ->
+          Thread.Sleep(TimeSpan.FromMinutes(30.0));
+          tc.removeMetaVariable n |> ignore
+        )).Start();
+        tc.addMetaVariable n (tc.toTermI t);
+        (n + " := " + (t.ToString()) + " (will expire in 30 minutes)", None)
+
+      let reduceanddec n s b =
+        let t = parser.parse s |> tc.toTermI in
+        let br = BetaReducer () in
+        let res = t |> br.reduce in
+        let img = br.toBitmap () in
+        (new Task(fun () ->
+          Thread.Sleep(TimeSpan.FromMinutes(30.0));
+          tc.removeMetaVariable n |> ignore
+        )).Start();
+        tc.addMetaVariable n res;
+        let res = res |> tc.toTerm in
+        (n + " := " + (if (res.ToString().Length > 80 && b) then "(image)" else res.ToString()), if b then Some img else None)
+
+      let showvars () =
+        let img = ImageBuilder.build ((tc.MetaDic.Select(fun i -> i.Key + " := " + (i.Value |> tc.toTerm).ToString())) |> Enumerable.ToArray) None None in
+        ("(image)", Some img)
 
       let (|Regex|_|) pattern input =
         let m = Regex.Match(input, pattern)
@@ -72,14 +97,21 @@ open System.Drawing.Imaging
         else None
       
       let parse s =
-        match s with
-          | Regex @".*@b_rdct\s*((?:-ni)*)\s+(.*)" [ni; t] ->
-            try
-              tryparse t (ni.Equals "-ni" |> not)
-            with
-              | :? BetaReducerException as e -> (e.Message, e.ErrorImage)
-              | e -> (String.Format("Native error: {0}", e.Message), None)
-          | _ -> ("Wrong syntax", None)
+        try
+          match s with
+            | Regex @".*@b_rdct\s*((?:\s-noimage|\s-ni)?)\s+(.+)\s+:b=\s+(.+)" [b; n; t] ->
+              reduceanddec n t (String.IsNullOrEmpty b)
+            | Regex @".*@b_rdct\s*((?:\s-noimage|\s-ni)?)\s+(.*)" [b; t] ->
+              reduce t (String.IsNullOrEmpty b)
+            | Regex @".*@b_rdct\s+([^ ]+)\s*:=\s*(.+)" [n; t] ->
+              decvar n t
+            | Regex @".*@b_rdct\s+(?:-showvars|-sv).*" [] ->
+              showvars ()
+            | _ -> ("Wrong syntax", None)
+        with
+          | :? BetaReducerException as e -> (e.Message, e.ErrorImage)
+          | e -> (String.Format("Native error: {0}", e.Message), None)
+          
       
       let tryupdate text (i : Bitmap option) id =
         Console.WriteLine ("try: " + text);
@@ -106,17 +138,21 @@ open System.Drawing.Imaging
         with
           | e when e.Message.Contains("validation of media") ->
             try 
-              t.Statuses.UpdateAsync(status = String.Format("{0} too big result (try using -ni option) [{1}]", name, h), in_reply_to_status_id = Nullable s.Id) |> ignore
+              t.Statuses.UpdateAsync(status = String.Format("{0} Too big result (try using -ni option) [{1}]", name, h), in_reply_to_status_id = Nullable s.Id) |> ignore
             with 
                 | _ -> ()
           | e ->
             error <- error + 1;
             report ("err: failed to send on " + (DateTime.Now.ToString()) + " to " + s.Id.ToString() + "\n" + e.Message)
-      
+     
+      let restart () =
+        Process.Start(Assembly.GetEntryAssembly().Location) |> ignore;
+        Environment.Exit(0)
+             
       let operate s =
         match s with
           | Regex @".*status.*" [] -> String.Format("info: running since {0} (for {1}), {2} replies sent ({3} errors)", p.StartTime, (DateTime.Now - p.StartTime), count, error) |> report
-          | Regex @".*restart.*" [] -> ()
+          | Regex @".*restart.*" [] -> restart ()
           | _ -> ()
 
       [<EntryPoint>]
@@ -137,8 +173,8 @@ open System.Drawing.Imaging
                       if th.Join(TimeSpan.FromSeconds(60.0)) |> not then
                         th.Abort();
                         let h = hash () in
-                        tryupdate (String.Format("$@{0} Unreducible expression (computation timeout) [{1}]", s.User.ScreenName, h)) None s.Id
-                    in Thread(rep).Start();
+                        tryupdate (String.Format("@{0} Unreducible expression (computation timeout) [{1}]", s.User.ScreenName, h)) None s.Id
+                    in (new Task(fun () -> rep ())).Start();
                 | :? DirectMessageMessage as m ->
                   if (m.DirectMessage.Sender.Id.Value = ownerId) then operate m.DirectMessage.Text
                 | _ -> ()

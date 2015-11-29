@@ -142,5 +142,7 @@ module Transform =
         if dict.ContainsKey s
         then dict.Remove s
         else BetaReducerException (String.Format("Meta variable '{0}' is not defined", s), None, ErrorState.MetaVariableFailed) |> raise 
+
+      member this.MetaDic with get () = dict
   end
 
