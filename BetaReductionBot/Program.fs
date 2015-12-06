@@ -67,11 +67,11 @@ open System.Drawing.Imaging
 
       let decvar n s =
         let t  = parser.parse s in
+        tc.addMetaVariable n (tc.toTermI t);
         (new Task(fun () ->
           Thread.Sleep(TimeSpan.FromMinutes(30.0));
           tc.removeMetaVariable n |> ignore
         )).Start();
-        tc.addMetaVariable n (tc.toTermI t);
         (n + " := " + (t.ToString()) + " (will expire in 30 minutes)", None)
 
       let reduceanddec n s b =
@@ -79,11 +79,11 @@ open System.Drawing.Imaging
         let br = BetaReducer () in
         let res = t |> br.reduce in
         let img = br.toBitmap () in
+        tc.addMetaVariable n res;
         (new Task(fun () ->
           Thread.Sleep(TimeSpan.FromMinutes(30.0));
           tc.removeMetaVariable n |> ignore
         )).Start();
-        tc.addMetaVariable n res;
         let res = res |> tc.toTerm in
         (n + " := " + (if (res.ToString().Length > 80 && b) then "(image)" else res.ToString()), if b then Some img else None)
 
