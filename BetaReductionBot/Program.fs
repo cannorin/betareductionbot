@@ -161,23 +161,26 @@ open System.Drawing.Imaging
         if not debug then
           report("notice: application started on " + DateTime.Now.ToString());
           let rec loop () =
-            let u = t.Streaming.User() in
-            for m in u do
-              match m with
-                | :? StatusMessage as s ->
-                  let s = s.Status in
-                  if (s.Text.Contains("@b_rdct") && s.RetweetedStatus = null) then
-                    let rep () =
-                      let th = new Thread(fun () -> reply s) in
-                      th.Start();
-                      if th.Join(TimeSpan.FromSeconds(60.0)) |> not then
-                        th.Abort();
-                        let h = hash () in
-                        tryupdate (String.Format("@{0} Unreducible expression (computation timeout) [{1}]", s.User.ScreenName, h)) None s.Id
-                    in (new Task(fun () -> rep ())).Start();
-                | :? DirectMessageMessage as m ->
-                  if (m.DirectMessage.Sender.Id.Value = ownerId) then operate m.DirectMessage.Text
-                | _ -> ()
+            try
+              let u = t.Streaming.User() in
+              for m in u do
+                match m with
+                  | :? StatusMessage as s ->
+                    let s = s.Status in
+                    if (s.Text.Contains("@b_rdct") && s.RetweetedStatus = null) then
+                      let rep () =
+                        let th = new Thread(fun () -> reply s) in
+                        th.Start();
+                        if th.Join(TimeSpan.FromSeconds(60.0)) |> not then
+                          th.Abort();
+                          let h = hash () in
+                          tryupdate (String.Format("@{0} Unreducible expression (computation timeout) [{1}]", s.User.ScreenName, h)) None s.Id
+                      in (new Task(fun () -> rep ())).Start();
+                  | :? DirectMessageMessage as m ->
+                    if (m.DirectMessage.Sender.Id.Value = ownerId) then operate m.DirectMessage.Text
+                  | _ -> ()
+            with
+              | ex -> report("notice: an exception occured: " + ex.ToString())
             report("notice: receiving loop is going to restart on " + DateTime.Now.ToString());
             loop ()
           in loop ()
