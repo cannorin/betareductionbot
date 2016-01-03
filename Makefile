@@ -34,5 +34,5 @@ nuget-packages-restore: external-tools
 # Clean
 
 clean:
-	$(RM) -rf Release
+	$(RM) -rf BetaReductionBot/obj
 
