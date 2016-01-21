@@ -136,7 +136,7 @@ open System.Drawing.Imaging
         try 
           tryupdate text img s.Id
         with
-          | e when e.Message.Contains("validation of media") ->
+          | e when e.Message.Contains("media") ->
             try 
               t.Statuses.UpdateAsync(status = String.Format("{0} Too big result (try using -ni option) [{1}]", name, h), in_reply_to_status_id = Nullable s.Id) |> ignore
             with 
