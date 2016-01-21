@@ -18,7 +18,7 @@ Beta Reduction Bot
 ## Syntax
 
     term := variable | application | abstraction | number | meta
-    variable := [ 'a'..'z' 'A'..'Z' ]+
+    variable := [ 'a'..'z' 'A'..'Z' ]
     number := [ 0..9 ]+
     meta := '&'variable
     application := ( variable | abstraction | number | meta | '(' application ')' )2+
