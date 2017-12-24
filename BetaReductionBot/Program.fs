@@ -39,7 +39,7 @@ open System.Drawing.Imaging
 
       let t =
         let token = Environment.GetEnvironmentVariable "ACCESSTOKEN" in
-        let secret = Environment.GetEnvironmentVariable "ACCESSSECRET" om
+        let secret = Environment.GetEnvironmentVariable "ACCESSSECRET" in
         Tokens.Create ("8brJ4ZmOc5fHxY89AcOLFdhy7", "3N1Mp6BjesoyLgbdiutksFalVXJ1UoTBiTOxNa0nBfaHJ0xUsB", token, secret)
 
       let hash () = Seq.map (fun _ -> hashbase.[rand.Next(hashbase.Length)]) [1..3] |> String.Concat
