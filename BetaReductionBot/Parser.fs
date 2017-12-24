@@ -38,11 +38,11 @@ module Parser =
         
         let term : ScanRatCombinators.Parser<Term> = production "term"
         let var = ss name --> fun x -> Term.Variable x
-        let abs = ((parstart + prefix) +. (((tfold_d "args" (name --> fun x -> x.ToString()) add) --> fun x -> x.ToCharArray() |> Enumerable.Reverse) .+ sep)) + term .+ parend --> fun(x, y) -> toAbs x y
+        let abst = ((parstart + prefix) +. (((tfold_d "args" (name --> fun x -> x.ToString()) add) --> fun (x : string) -> x.ToCharArray() |> Seq.rev) .+ sep)) + term .+ parend --> fun(x, y) -> toAbs x y
         let meta = (spaces + meta) +. (tfold_d "name" (name --> fun x -> x.ToString()) add) .+ spaces --> fun x -> Term.Meta(Some x, None)
         let numt = spaces +. num .+ spaces --> fun x -> Term.Meta(None, Some x)
         let apply : ScanRatCombinators.Parser<Term> = production "apply"
-        let tWithoutApply = spaces +. (var |- abs |- numt |-  meta |- (parstart +. apply .+ parend)) .+ spaces
+        let tWithoutApply = spaces +. (var |- abst |- numt |-  meta |- (parstart +. apply .+ parend)) .+ spaces
         apply.rule <- tfold_d "apply2" (tWithoutApply --> fun x -> [x]) (fun(x, y) -> List.concat[x;y]) --> toApp
         term.rule <- spaces +. (apply |- tWithoutApply) .+ spaces
         term

@@ -1,0 +1,4 @@
+language: fsharp
+solution: BetaReductionBot.sln
+mono:
+- latest

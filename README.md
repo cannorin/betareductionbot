@@ -1,6 +1,8 @@
 Beta Reduction Bot
 ==================
 
+[![Build Status](https://travis-ci.org/cannorin/betareductionbot.svg?branch=heroku)](https://travis-ci.org/cannorin/betareductionbot)
+
 [@b_rdct](https://twitter.com/b_rdct)
 
 ## Usage
@@ -18,7 +20,7 @@ Beta Reduction Bot
 ## Syntax
 
     term := variable | application | abstraction | number | meta
-    variable := [ 'a'..'z' 'A'..'Z' ]
+    variable := [ 'a'..'z' 'A'..'Z' ]+
     number := [ 0..9 ]+
     meta := '&'variable
     application := ( variable | abstraction | number | meta | '(' application ')' )2+

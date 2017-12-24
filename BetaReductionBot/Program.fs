@@ -38,19 +38,9 @@ open System.Drawing.Imaging
       let tc = TermConverter None
 
       let t =
-        if(File.Exists("bot.xml")) then
-          use y = XmlReader.Create("bot.xml") in
-              x.ReadObject(y) :?> Tokens
-        else
-          let se = OAuth.Authorize("8brJ4ZmOc5fHxY89AcOLFdhy7", "3N1Mp6BjesoyLgbdiutksFalVXJ1UoTBiTOxNa0nBfaHJ0xUsB") in
-          Console.WriteLine(se.AuthorizeUri);
-          Console.Write("pin> ");
-          let g = se.GetTokens(Console.ReadLine()) in
-          let s = XmlWriterSettings() in
-          s.Encoding <- System.Text.UTF8Encoding(false);
-          use y = XmlWriter.Create("bot.xml", s) in
-              x.WriteObject(y, g)
-          g
+        let token = Environment.GetEnvironmentVariable "ACCESSTOKEN" in
+        let secret = Environment.GetEnvironmentVariable "ACCESSSECRET" om
+        Tokens.Create ("8brJ4ZmOc5fHxY89AcOLFdhy7", "3N1Mp6BjesoyLgbdiutksFalVXJ1UoTBiTOxNa0nBfaHJ0xUsB", token, secret)
 
       let hash () = Seq.map (fun _ -> hashbase.[rand.Next(hashbase.Length)]) [1..3] |> String.Concat
 
@@ -171,7 +161,7 @@ open System.Drawing.Imaging
                       let rep () =
                         let th = new Thread(fun () -> reply s) in
                         th.Start();
-                        if th.Join(TimeSpan.FromSeconds(60.0)) |> not then
+                        if th.Join(TimeSpan.FromSeconds(30.0)) |> not then
                           th.Abort();
                           let h = hash () in
                           tryupdate (String.Format("@{0} Unreducible expression (computation timeout) [{1}]", s.User.ScreenName, h)) None s.Id
@@ -182,6 +172,7 @@ open System.Drawing.Imaging
             with
               | ex -> report("notice: an exception occured: " + ex.ToString())
             report("notice: receiving loop is going to restart on " + DateTime.Now.ToString());
+            Thread.Sleep 1000;
             loop ()
           in loop ()
         else
