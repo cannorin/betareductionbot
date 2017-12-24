@@ -20,25 +20,25 @@ Beta Reduction Bot
 ## Syntax
 
     term := variable | application | abstraction | number | meta
-    variable := [ 'a'..'z' 'A'..'Z' ]+
+    variable := [ 'a'..'z' 'A'..'Z' ]
     number := [ 0..9 ]+
-    meta := '&'variable
+    meta := '&' [ 'a'..'z' 'A'..'Z' ]+
     application := ( variable | abstraction | number | meta | '(' application ')' )2+
-    abstraction := '(' ( 'λ' | '\' | '^' ) variable '.' term ')'
+    abstraction := '(' ( 'λ' | '\' | '^' ) variable+ '.' term ')'
 
 ## Example
 
     you:    @b_rdct (\xyz.xz(yz))abc
     b_rdct: @you ac(bc)
 
-## Number
+## Numbers
 
 Integers larger than 0 will be converted to Church integers.
 
     you:    @b_rdct 10
     b_rdct: @you (λfx.f(f(f(f(f(f(f(f(f(fx))))))))))
 
-## Meta Variable Expression
+## Meta Variable Expressions
 
 You can use variables declared by ```:=``` by adding "&" to its head.
 
@@ -81,3 +81,11 @@ You can use these variables without declaring them below:
     isnil := (^l.l(^htd.(^xy.y))(^xy.x))
 
 Variables declared by users will expire in 30 minutes.
+
+## Restrictions
+
+* λ-variables are limited to 1 character, whereas meta variables can have long names.
+
+* The computation times out after 30 seconds.
+
+* Most of infinite loops will be detected and terminated.
