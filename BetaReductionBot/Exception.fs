@@ -1,7 +1,7 @@
 ﻿namespace BetaReductionBot
 open System.Drawing
 open System
-
+open BetaReductionBot.Utils
 
 module Exception =
   begin
@@ -13,7 +13,7 @@ module Exception =
       | WrongSyntax
       | MetaVariableFailed
 
-    type BetaReducerException(s : string, b : option<Bitmap>, es : ErrorState) =
+    type BetaReducerException(s : string, b : option<RenderResult>, es : ErrorState) =
       inherit Exception(s)
       let img = b
       let state = es

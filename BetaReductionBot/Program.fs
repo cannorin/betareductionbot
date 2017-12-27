@@ -52,8 +52,7 @@ open System.Drawing.Imaging
         let t = parser.parse s in
         let br = BetaReducer () in
         let res = tc.toTermI t |> br.reduce |> tc.toTerm in
-        let img = br.toBitmap () in
-        ((if (res.ToString().Length > 80 && b) then "(image)" else res.ToString()), if b then Some img else None)
+        (res.ToString (), if b then Some (br.toBitmap()) else None)
 
       let decvar n s =
         let t  = parser.parse s in
@@ -68,14 +67,13 @@ open System.Drawing.Imaging
         let t = parser.parse s |> tc.toTermI in
         let br = BetaReducer () in
         let res = t |> br.reduce in
-        let img = br.toBitmap () in
         tc.addMetaVariable n res;
         (new Task(fun () ->
           Thread.Sleep(TimeSpan.FromMinutes(30.0));
           tc.removeMetaVariable n |> ignore
         )).Start();
         let res = res |> tc.toTerm in
-        (n + " := " + (if (res.ToString().Length > 80 && b) then "(image)" else res.ToString()), if b then Some img else None)
+        (n + " := " + res.ToString(), if b then Some (br.toBitmap()) else None)
 
       let showvars () =
         let img = ImageBuilder.build ((tc.MetaDic.Select(fun i -> i.Key + " := " + (i.Value |> tc.toTerm).ToString())) |> Enumerable.ToArray) None None in
@@ -103,37 +101,58 @@ open System.Drawing.Imaging
           | e -> (String.Format("Native error: {0}", e.Message), None)
           
       
-      let tryupdate text (i : Bitmap option) id =
+      let tryupdate text i id =
         Console.WriteLine ("try: " + text);
         let id = Nullable id in
         match i with
-          | Some i ->
-            let ic = ImageConverter() in
-            let bs = ic.ConvertTo(i, typeof<byte[]>) :?> byte[]
-            let me = t.Media.Upload(media = bs) in
-            t.Statuses.Update(status=text, in_reply_to_status_id=id, media_ids=[me.MediaId])
-          | None -> t.Statuses.Update(status=text, in_reply_to_status_id=id)
+          | Some (Images imgs) ->
+            let upload (img : Bitmap) = 
+              let bs =
+                use stream = new MemoryStream () in
+                img.Save (stream, ImageFormat.Png);
+                stream.ToArray ()
+              in
+              img.Dispose ();
+              t.Media.Upload(media = bs).MediaId
+            in
+            let ids = imgs |> List.map upload in
+            t.Statuses.Update (status=text, in_reply_to_status_id=id, media_ids=ids)
+          | _ -> t.Statuses.Update (status=text, in_reply_to_status_id=id)
         |> ignore
       
+      let createText name msg img hash =
+        let trial = sprintf "%s %s %s" name msg hash in
+        if TwitterText.isValid trial then
+          trial
+        else
+          match img with
+            | Some (Images _) ->
+              sprintf "%s (image) %s" name hash
+            | Some TooBig ->
+              sprintf "%s Error: too big result to show. %s" name hash
+            | None ->
+              let n = (msg.Length - TwitterText.count trial + TwitterText.limit + 1) in
+              sprintf "%s %s %s" name (msg.[..n]) hash
+
       let reply (s : Status) =
         let name = "@" + s.User.ScreenName in
         let res = parse(s.Text.Replace("&amp;","&"))
         let (msg, img) = res in
-        let text = name + " " + msg in
-        let h = hash () in
-        let text = (if text.Length > 130 then text.Substring(0, 130) else text) + String.Format(" [{0}]", h) in
+        let h = sprintf "[%s]" (hash ()) in
+        let text = createText name msg img h in
         count <- count + 1;
         try 
           tryupdate text img s.Id
         with
-          | e when e.Message.Contains("media") ->
+          | e & :? TwitterException ->
             try 
-              t.Statuses.UpdateAsync(status = String.Format("{0} Too big result (try using -ni option) [{1}]", name, h), in_reply_to_status_id = Nullable s.Id) |> ignore
+              let msg = sprintf "Twitter error: \"%s\"" e.Message in
+              let text = createText name msg None h in
+              t.Statuses.UpdateAsync(status = text, in_reply_to_status_id = Nullable s.Id) |> ignore
             with 
                 | _ -> ()
-          | e ->
-            error <- error + 1;
-            report ("err: failed to send on " + (DateTime.Now.ToString()) + " to " + s.Id.ToString() + "\n" + e.Message)
+          | e -> sprintf "error: %s" e.Message |> report
+            
      
       let restart () =
         Process.Start(Assembly.GetEntryAssembly().Location) |> ignore;
@@ -152,6 +171,7 @@ open System.Drawing.Imaging
           report("notice: application started on " + DateTime.Now.ToString());
           let rec loop () =
             try
+              Thread.Sleep 1000;
               let u = t.Streaming.User() in
               for m in u do
                 match m with
@@ -172,7 +192,6 @@ open System.Drawing.Imaging
             with
               | ex -> report("notice: an exception occured: " + ex.ToString())
             report("notice: receiving loop is going to restart on " + DateTime.Now.ToString());
-            Thread.Sleep 1000;
             loop ()
           in loop ()
         else

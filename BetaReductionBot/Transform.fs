@@ -28,13 +28,22 @@ module Transform =
           | Apply(l, r) -> TermI.Apply(replace l t2 i, replace r t2 i)
           | Abstract(b, h) -> TermI.Abstract(replace b (shift t2 0 1) (i + 1), h)
 
+      let termsToLines ts =
+        let f i x = 
+          let x = Ast.toTerm x in
+          if i > 0 then
+            Ast.arrow + " " + x.ToString () 
+          else x.ToString ()
+        in
+        ts |> Seq.mapi f |> Seq.toArray
+      
       let rec doReduce t i =
         if i > 100000 then raise (BetaReducerException ("Expression is too big", None, ErrorState.Unreducible))
 
         else if hist.Contains t then
           let ctb = !ct in
-          let e = List.concat [Seq.toList hist; (if t = ctb then [t] else [ctb; t])] in
-          let image = ImageBuilder.build (e |> List.mapi (fun i x -> let x = Ast.toTerm x in if i > 0 then Ast.arrow + x.ToString() else x.ToString()) |> Enumerable.ToArray) None None in
+          let ts = (if t = ctb then seq [t] else seq [ctb; t]) |> Seq.append hist in
+          let image = ImageBuilder.build (termsToLines ts) None None in
           raise (BetaReducerException("Infinite reduction", Some(image), ErrorState.InfiniteReduction))
         
         else 
@@ -53,14 +62,14 @@ module Transform =
         ct := t;
         match doReduce t 0 with
             | []     -> 
-                ignore (hist.Add t);
+                hist.Add t |> ignore;
                 t
             | x :: _ -> 
-                ignore (hist.Add t);
+                hist.Add t |> ignore;
                 this.reduce x
 
       member this.toBitmap () =
-        ImageBuilder.build (Seq.map Ast.toTerm hist |> Seq.mapi (fun i x -> if i > 0 then Ast.arrow + x.ToString() else x.ToString()) |> Enumerable.ToArray) None None
+        ImageBuilder.build (termsToLines hist) None None
 
     type TermConverter (x : option<Dictionary<string, TermI>>) =
       let dict = 

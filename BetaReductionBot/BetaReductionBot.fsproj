@@ -96,6 +96,9 @@
     <Reference Include="Newtonsoft.Json">
       <HintPath>../packages/Newtonsoft.Json.10.0.2/lib/net45/Newtonsoft.Json.dll</HintPath>
     </Reference>
+    <Reference Include="FSharp.Data">
+      <HintPath>../packages/FSharp.Data.2.4.3/lib/net45/FSharp.Data.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
