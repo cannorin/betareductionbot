@@ -1,4 +1,4 @@
 language: csharp
-solution: BetaReductionBot.sln
+solution: lambda.sln
 mono:
 - latest
