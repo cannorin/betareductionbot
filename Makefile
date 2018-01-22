@@ -24,12 +24,13 @@ submodule:
 
 $(EX_NUGET): submodule
 	cd nuget && $(MAKE)
+	$(NUGET) update -self
 
 # NuGet
 
 nuget-packages-restore: external-tools
-	[ -d packages ] || \
-	    $(NUGET) restore -ConfigFile src/packages.config -PackagesDirectory packages ; \
+	[ -d src/packages ] || \
+	    $(NUGET) restore lambda.sln  ; \
 
 # Clean
 
