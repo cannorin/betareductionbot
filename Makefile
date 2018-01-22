@@ -11,7 +11,7 @@ NUGET?=$(EX_NUGET)
 all: binary ;
 
 binary: nuget-packages-restore 
-	$(XBUILD) BetaReductionBot.sln /p:Configuration=Release
+	$(XBUILD) lambda.sln /p:Configuration=Release
 
 # External tools
 
@@ -29,10 +29,10 @@ $(EX_NUGET): submodule
 
 nuget-packages-restore: external-tools
 	[ -d packages ] || \
-	    $(NUGET) restore -ConfigFile BetaReductionBot/packages.config -PackagesDirectory packages ; \
+	    $(NUGET) restore -ConfigFile src/packages.config -PackagesDirectory packages ; \
 
 # Clean
 
 clean:
-	$(RM) -rf BetaReductionBot/obj
+	$(RM) -rf src/obj
 

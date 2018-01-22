@@ -1,1 +1,1 @@
-bot: mono BetaReductionBot/bin/Release/BetaReductionBot.exe
+bot: mono src/bin/Release/lambda.exe
