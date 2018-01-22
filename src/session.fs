@@ -76,7 +76,8 @@ let rec private renderHist hist iro fo =
       done
       ib <- ib |> iprintfn font Brushes.Black " "
     done
-    match iro |> Option.map (sprintTermPart (hist |> List.last)) |> Option.flatten with
+    let inline flatten x = match x with Some x -> x | None -> None in
+    match iro |> Option.map (sprintTermPart (hist |> List.last)) |> flatten with
       | Some s ->
         ib <- ib |> iprintfn font Brushes.Black " "
                  |> iprintfn font Brushes.Red "[!] ... %s"  s
