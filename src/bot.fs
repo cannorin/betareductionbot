@@ -44,7 +44,7 @@ type Microsoft.FSharp.Control.Async with
         let! result = Async.AwaitTask task
         return Some result
       else
-        do task.ContinueWith(fun (x: Task<'T>) -> finalizer x.Result; x.Dispose());
+        do task.ContinueWith(fun (x: Task<'T>) -> finalizer x.Result; x.Dispose()) |> ignore;
         return None
     }
 end

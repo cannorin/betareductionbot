@@ -39,7 +39,6 @@ let rec private renderHist hist iro fo =
   let fs = fo ?| (hs |> ImageHelper.estimateFontSize) in
   use font = ImageHelper.stixFont fs in
   let (ex, ey) = hs |> String.concat Environment.NewLine |> ImageHelper.measure font in
-  printfn "hist := %A" (ex, ey)
 
   if ex < 4000 && ey >= 4000 && ey / 4000 < 4 then
     let n = ey / 4000 + 1 in
@@ -129,7 +128,8 @@ type Session =
     dadd "car" "(^p.p(^xy.x))";
     dadd "cdr" "(^p.p(^xy.y))";
     dadd "isnil" "(^l.l(^htd.(^xy.y))(^xy.x))";
-    dadd "ack" "&Y (^fxy. &ifthenelse (&iszero x) (&succ y) (f (&pred x) (&ifthenelse (&iszero y) 1 (f x (&pred y)))))";
+    dadd "ack" "&fix (^fxy. &ifthenelse (&iszero x) (&succ y) (f (&pred x) (&ifthenelse (&iszero y) 1 (f x (&pred y)))))";
+    dadd "fix" "&fix"
     { dict = !dict }
   
   member this.parse x =

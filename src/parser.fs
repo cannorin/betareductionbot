@@ -11,6 +11,7 @@ type ParsedTerm =
   | PAbs of char * ParsedTerm
   | PApp of ParsedTerm * ParsedTerm
   | PMeta of string
+  | PFix
 
 let rec toUTerm names dict = function
   | PVar c ->
@@ -34,7 +35,7 @@ let rec toUTerm names dict = function
       | Some x -> x
       | None ->
         LambdaException (sprintf "Meta variable '%s' is not defined" s, None, ErrorState.MetaVariableFailed) |> raise
-
+  | PFix -> TmFix
 
 let parse code =
   let tfold name x d f =
@@ -67,7 +68,7 @@ let parse code =
     let term : ScanRatCombinators.Parser<ParsedTerm> = production "term"
     let var = ss name --> fun x -> PVar x
     let abst = prefix +. (((tfold_d "args" (name --> fun x -> x.ToString()) add) --> fun (x : string) -> x.ToCharArray() |> Seq.rev) .+ sep ) + term --> fun(x, y) -> toAbs x y
-    let meta = (spaces + meta) +. (tfold_d "name" (name --> fun x -> x.ToString()) add) .+ spaces --> fun x -> PMeta x
+    let meta = (spaces + meta) +. (tfold_d "name" (name --> fun x -> x.ToString()) add) .+ spaces --> fun x -> if x = "fix" then PFix else PMeta x
     let numt = spaces +. num .+ spaces --> fun x -> PNat x
     let apply : ScanRatCombinators.Parser<ParsedTerm> = production "apply"
     let tWithoutApply = spaces +. (var |- abst |- numt |-  meta |- (parstart +. term .+ parend)) .+ spaces

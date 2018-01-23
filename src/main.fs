@@ -9,6 +9,9 @@ open Lambda.Session
 open System
 open System.Drawing
 open System.Drawing.Imaging
+open System.Diagnostics
+open System.Reflection
+open System.Threading
 open Microsoft.FSharp.Collections
 open Mono.Terminal
 open ImageBuilder
@@ -81,8 +84,14 @@ let main argv =
       printfn "beta reduction repl"
       printfn "type :help for help"
       printfn ""
-      loop (Session None)
-    | _ -> TwitterBot.start (Session None)
-  0
-
+      loop (Session None); 0
+    | _ -> 
+      try
+        TwitterBot.start (Session None); 0
+      with
+        | e ->
+          sprintf "fatal error, wait 10 seconds to restart:\n%s" (to_s e) |> TwitterBot.report |> ignore;
+          Thread.Sleep 10000;
+          Process.Start(Assembly.GetEntryAssembly().Location) |> ignore;
+          0
 

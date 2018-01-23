@@ -19,13 +19,14 @@ type Term =
   | TmFreeVar of char
   | TmAbs of Term * char option
   | TmApp of Term * Term
-      
+  | TmFix
+
 let rec fvOf (t : Term) =
   match t with
-    | TmBoundVar _ -> set []
     | TmFreeVar c  -> set [c]
     | TmApp (l, r) -> Set.union (fvOf l) (fvOf r)
     | TmAbs (b, _) -> fvOf b
+    | _ -> set []
 
 let rec termToString cs fvs = function
   | TmFreeVar c -> to_s c
@@ -55,6 +56,7 @@ let rec termToString cs fvs = function
     sprintf "%s(%s)" (termToString cs fvs l) (termToString cs fvs r)
   | TmApp (l, r) ->
     sprintf "%s%s" (termToString cs fvs l) (termToString cs fvs r)
+  | TmFix -> "&fix"
 
 type Term with
   member this.ToString() = termToString [] (fvOf this) this
