@@ -25,6 +25,7 @@ open System.Runtime.Serialization
 open System.Text.RegularExpressions
 open System.Xml
 open Mono.Terminal
+open ImageBuilder
 
 type AsyncBuilder with
   member x.Bind(t:Task<'T>, f:'T -> Async<'R>) : Async<'R> = 
@@ -32,7 +33,7 @@ type AsyncBuilder with
 end
 
 type Microsoft.FSharp.Control.Async with
-  static member AwaitFun (t : unit ->'T, timeout : int) =
+  static member AwaitFun (t : unit -> 'T, finalizer : 'T -> unit, timeout : int) =
     async {
       use cts = new CancellationTokenSource()
       let task = Task.Run t
@@ -43,7 +44,7 @@ type Microsoft.FSharp.Control.Async with
         let! result = Async.AwaitTask task
         return Some result
       else
-        do task.ContinueWith(fun (x: Task<'T>) -> x.Dispose());
+        do task.ContinueWith(fun (x: Task<'T>) -> finalizer x.Result; x.Dispose());
         return None
     }
 end
@@ -118,7 +119,13 @@ let work (session: Session) s =
         let e = session.parse t in
         (session.defMeta n e, sprintf "%s := %s" n (to_s e), None)
       | Regex @".*@b_rdct\s+(?:-showvars|-sv).*" [] ->
-        failwith ""
+        let mutable ib = ImageBuilder.create 8 StringFormat.standard in
+        use font = new Font ("STIX", float32 24) in 
+        for (k, v) in session.dict |> Map.toSeq do
+          ib <- ib |> iprintfn font Brushes.Black "&%s := %s" k (to_s v)
+        done
+        let i = ib |> ImageBuilder.render Color.White |> List.singleton |> RenderedImages in
+        (session, "(image)", Some i)
       | Regex @".*@b_rdct\s*((?:\s-noimage|\s-ni)?)\s+(.*)" [b; t] ->
         match (session.parse t |> session.eval) with
           | (i, Some res) ->
@@ -132,12 +139,17 @@ let work (session: Session) s =
     | LambdaException (msg, i, _) -> (session, msg, i)
     | e -> (session, String.Format("Native error: {0}", e.Message), None)
 
-let withTimeout seconds (a: unit -> 'a) =
-  Async.AwaitFun(a, seconds * 1000)
+let withTimeout seconds a f =
+  Async.AwaitFun(a, f, seconds * 1000)
 
 let reply (session: Session) (s: Status) =
   async {
-    let! cr = withTimeout 30 (fun () -> work session (s.Text.Replace("&amp;","&"))) in
+    let! cr = withTimeout 30 
+                          (fun () -> work session (s.Text.Replace("&amp;","&"))) 
+                          (function 
+                             | (_, _, Some (RenderedImages xs)) -> xs |> List.iter (fun x -> x.Dispose())
+                             | _ -> ()
+                          ) in
     let (newSession, msg, img) = 
       match cr with
         | Some res -> res
@@ -179,13 +191,14 @@ let reply (session: Session) (s: Status) =
       | :? AggregateException as e ->
         match (e.InnerExceptions.[0]) with
           | :? TwitterException as e ->
-            t.Statuses.UpdateAsync(sprintf "@%s Twitter error: %s" s.User.ScreenName e.Message, in_reply_to_status_id=id) |> ignore
+            t.Statuses.UpdateAsync(sprintf "@%s Twitter error: %s %s" s.User.ScreenName e.Message  (hash()), in_reply_to_status_id=id) |> ignore
           | e -> raise e
     do GC.Collect();
     return newSession
   }
 
 let restart () =
+  sprintf "notice: process restarting at %A" DateTime.Now |> report |> ignore;
   Process.Start(Assembly.GetEntryAssembly().Location) |> ignore;
   Environment.Exit(0)
 
@@ -210,10 +223,11 @@ let rec start _session =
   let session = ref _session in
   sprintf "notice: connected at %A" DateTime.Now |> report |> ignore;
   let obs = t.Streaming.UserAsObservable() in
-  let obsr = obs |> Observable.delaySubscription (TimeSpan.FromSeconds 1.0)
-                 |> Observable.retry
-                 |> Observable.catch <| obs
-                 |> Observable.repeat
+  let obsr = obs
+                 //|> Observable.delaySubscription (TimeSpan.FromSeconds 1.0)
+                 //|> Observable.retry
+                 //|> Observable.catch <| obs
+                 //|> Observable.repeat
                  |> Observable.publish in
 
   let inline sub x =
