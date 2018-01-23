@@ -56,7 +56,7 @@ let rec termToString cs fvs = function
     sprintf "%s(%s)" (termToString cs fvs l) (termToString cs fvs r)
   | TmApp (l, r) ->
     sprintf "%s%s" (termToString cs fvs l) (termToString cs fvs r)
-  | TmFix -> "&fix"
+  | TmFix -> "(&fix)"
 
 type Term with
   member this.ToString() = termToString [] (fvOf this) this
