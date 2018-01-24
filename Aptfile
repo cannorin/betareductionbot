@@ -1,7 +1,3 @@
-:repo:deb http://download.mono-project.com/repo/debian wheezy main
-:repo:deb http://download.mono-project.com/repo/debian wheezy-apache24-compat main
 libgdiplus
 fonts-stix
-mono-complete
-fsharp
 
