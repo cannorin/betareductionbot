@@ -220,8 +220,8 @@ let dm (s: Session ref) (d: DirectMessage) =
 
 let rec start _session =
   let session = ref _session in
-  sprintf "notice: connected at %A" DateTime.Now |> report |> ignore;
   let obs = t.Streaming.UserAsObservable() in
+  sprintf "notice: connected at %A" DateTime.Now |> report |> ignore;
   let obsr = obs
                  //|> Observable.delaySubscription (TimeSpan.FromSeconds 1.0)
                  //|> Observable.retry
