@@ -218,15 +218,15 @@ let dm (s: Session ref) (d: DirectMessage) =
     return session
   }
 
-let rec start _session =
+let start _session =
   let session = ref _session in
   let obs = t.Streaming.UserAsObservable() in
   sprintf "notice: connected at %A" DateTime.Now |> report |> ignore;
   let obsr = obs
-                 //|> Observable.delaySubscription (TimeSpan.FromSeconds 1.0)
-                 //|> Observable.retry
-                 //|> Observable.catch <| obs
-                 //|> Observable.repeat
+                 |> Observable.delaySubscription (TimeSpan.FromSeconds 5.0)
+                 |> Observable.retry
+                 |> Observable.catch <| obs
+                 |> Observable.repeat
                  |> Observable.publish in
 
   let inline sub x =
@@ -248,7 +248,4 @@ let rec start _session =
          |> Observable.subscribe sub
   in
   use cn = Observable.connect obsr in
-  obs |> Observable.wait |> ignore;
-  sprintf "notice: connection lost at %A, reconnecting" DateTime.Now |> report |> ignore;
-  Thread.Sleep 1000;
-  start !session
+  Thread.Sleep Timeout.Infinite

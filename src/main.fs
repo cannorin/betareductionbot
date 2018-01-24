@@ -10,6 +10,7 @@ open System
 open System.Drawing
 open System.Drawing.Imaging
 open System.Diagnostics
+open System.IO
 open System.Reflection
 open System.Threading
 open Microsoft.FSharp.Collections
@@ -83,7 +84,7 @@ let rec loop (session : Session) =
     loop session'
 
 [<EntryPoint>]
-let main argv =
+let rec main argv =
   match (argv |> Array.toList) with
     | "--debug" :: _
     | "--repl" :: _ ->
@@ -92,12 +93,24 @@ let main argv =
       printfn ""
       loop (Session None); 0
     | _ -> 
+      let lockfile = "/tmp/betareductionbot.lock"  in
       try
-        TwitterBot.start (Session None); 0
-      with
-        | e ->
-          sprintf "fatal error, wait 10 seconds to restart:\n%s" (to_s e) |> TwitterBot.report |> ignore;
-          Thread.Sleep 10000;
-          Process.Start(Assembly.GetEntryAssembly().Location) |> ignore;
-          0
-
+        if File.Exists lockfile |> not then
+          try
+            (File.Create lockfile).Dispose();
+            Thread.Sleep 5000;
+            TwitterBot.start (Session None)
+          with
+            | e ->
+              cprintf ConsoleColor.Red "error: fatal error, wait 10 seconds to restart:\n%s" (to_s e);
+              sprintf "fatal error, wait 10 seconds to restart:\n%s" (to_s e) |> TwitterBot.report |> ignore;
+              Thread.Sleep 10000;
+              Process.Start(Assembly.GetEntryAssembly().Location) |> ignore;
+              Environment.Exit(0)
+        else
+          cprintf ConsoleColor.Red "error: process is a duplicate"
+        0
+      finally
+        File.Delete lockfile;
+        0
+    
