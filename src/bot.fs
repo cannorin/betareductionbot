@@ -142,7 +142,8 @@ let work (session: Session) s =
 let withTimeout seconds a f =
   Async.AwaitFun(a, f, seconds * 1000)
 
-let reply (session: Session) (s: Status) =
+let reply (ss: Session ref) (s: Status) =
+  let session = !ss in
   async {
     let! cr = withTimeout 30 
                           (fun () -> work session (s.Text.Replace("&amp;","&"))) 
@@ -199,7 +200,8 @@ let restart () =
   Process.Start(Assembly.GetEntryAssembly().Location) |> ignore;
   Environment.Exit(0)
 
-let dm (session: Session) (d: DirectMessage) =
+let dm (s: Session ref) (d: DirectMessage) =
+  let session = !s in
   async {
     match d.Text with
       | Regex @".*status.*" [] ->
@@ -236,13 +238,13 @@ let rec start _session =
   use replies =
     obsr |> Observable.choose (function :? StatusMessage as s -> Some s.Status | _ -> None)
          |> Observable.filter (fun x -> x.InReplyToUserId = me.Id && x.RetweetedStatus = null)
-         |> Observable.flatmapTask (reply !session >> Async.Catch >> Async.StartAsTask)
+         |> Observable.flatmapTask (reply session >> Async.Catch >> Async.StartAsTask)
          |> Observable.subscribe sub
   in
   use dms =
     obsr |> Observable.choose (function :? DirectMessageMessage as d -> Some d.DirectMessage | _ -> None)
          |> Observable.filter (fun x -> x.Sender.Id.Value = ownerId)
-         |> Observable.flatmapTask (dm !session >> Async.Catch >> Async.StartAsTask)
+         |> Observable.flatmapTask (dm session >> Async.Catch >> Async.StartAsTask)
          |> Observable.subscribe sub
   in
   use cn = Observable.connect obsr in
