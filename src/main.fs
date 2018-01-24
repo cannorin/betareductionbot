@@ -57,7 +57,7 @@ let rec loop (session : Session) =
             cprintfn ConsoleColor.DarkGray "%s := %s" n (to_s e);
             session.defMeta n e
           | t ->
-            let (_, res) = session.parse t |> session.eval in
+            let (i, res) = session.parse t |> session.eval in
             match res with
               | Some x ->
                 if sprintf "@cannorin %s [xxx]" (to_s x) |> TwitterText.isValid then
@@ -66,6 +66,12 @@ let rec loop (session : Session) =
                   cprintfn ConsoleColor.Red "the result is too big!" 
               | None ->
                 cprintfn ConsoleColor.Red "infinite reduction!"
+            match i with
+              | RenderedImages xs ->
+                //let (enc, eprms) = ImageHelper.genSaveParams ImageFormat.Jpeg [(Encoder.Quality, 0L)] in
+                //xs |> List.iteri (fun i x -> x.Save(sprintf "a%i.jpg" i, enc, eprms));
+                xs |> List.iter (fun x -> x.Dispose())
+              | _ -> ()
             session
 #if !DEBUG
       with

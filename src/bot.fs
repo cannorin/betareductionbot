@@ -159,15 +159,12 @@ let reply (session: Session) (s: Status) =
     let id = Nullable s.Id in
     try
       let! imgIds =
-        let inline getEncoder (x: ImageFormat) =
-          ImageCodecInfo.GetImageEncoders() |> Array.find (fun y -> y.FormatID = x.Guid)
         let upload i (img : Bitmap) = 
           async {
             let bs =
               use stream = new MemoryStream () in
-              let eprms = new EncoderParameters(1) in
-              eprms.Param.[0] <- new EncoderParameter(Encoder.Quality,5L);
-              img.Save (stream, getEncoder ImageFormat.Jpeg, eprms);
+              let (enc, eprms) = ImageHelper.genSaveParams ImageFormat.Jpeg [(Encoder.Quality, 0L)] in
+              img.Save (stream, enc, eprms);
               cprintfn ConsoleColor.Green "[%i] --> %gMB" i (float stream.Length / 1000.0 / 1000.0);
               stream.ToArray ()
             in

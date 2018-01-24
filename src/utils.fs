@@ -68,7 +68,15 @@ module ImageHelper =
         else
           wlen
       in
-      min 24 <| len |> max 4
+      min 24 <| len |> max 3
+    
+    let inline getEncoder (x: ImageFormat) =
+      ImageCodecInfo.GetImageEncoders() |> Array.find (fun y -> y.FormatID = x.Guid)
+    
+    let genSaveParams format prms =
+      let eprms = new EncoderParameters(List.length prms) in
+      prms |> List.iteri (fun i (k, v: int64) -> eprms.Param.[i] <- new EncoderParameter (k, v));
+      (getEncoder format, eprms)
   end
 
 open Microsoft.FSharp.Collections
