@@ -32,23 +32,6 @@ type AsyncBuilder with
     async.Bind(Async.AwaitTask t, f)
 end
 
-type Microsoft.FSharp.Control.Async with
-  static member AwaitFun (t : unit -> 'T, finalizer : 'T -> unit, timeout : int) =
-    async {
-      use cts = new CancellationTokenSource()
-      let task = Task.Run t
-      use timer = Task.Delay (timeout, cts.Token)
-      let! completed = Async.AwaitTask <| Task.WhenAny(task, timer)
-      if completed = (task :> Task) then
-        do cts.Cancel ()
-        let! result = Async.AwaitTask task
-        return Some result
-      else
-        do task.ContinueWith(fun (x: Task<'T>) -> finalizer x.Result; x.Dispose()) |> ignore;
-        return None
-    }
-end
-
 [<Literal>]
 let ownerId : int64 = 3054246138L
 let p = Process.GetCurrentProcess ()
@@ -107,14 +90,22 @@ let createText name msg img =
 let work (session: Session) s =
   try match s with
       | Regex @".*@b_rdct\s*((?:\s-noimage|\s-ni)?)\s+(.+)\s+:b=\s+(.+)" [b; n; t] ->
-        match (session.parse t |> session.eval) with
-          | (i, Some res) ->
+        let evl = session.parse t 
+               |> session.evalAsync
+               |> Async.withTimeout (TimeSpan.FromSeconds 30.0)
+               |> Async.run
+        in
+        match evl with
+          | Some (render, Some res) ->
             let s = sprintf "%s :b= %s" n (to_s res) in
             if (String.IsNullOrEmpty b) then 
               (session.defMeta n res, s, None)
             else
-              (session.defMeta n res, s, Some i)
-          | (i, None) -> (session, "Infinite reduction", Some i)
+              (session.defMeta n res, s, render () |> Some)
+          | Some (render, None) ->
+            (session, "Infinite reduction", render () |> Some)
+          | None ->
+            (session, "Computation timeout", None)
       | Regex @".*@b_rdct\s+([^ ]+)\s*:=\s*(.+)" [n; t] ->
         let e = session.parse t in
         (session.defMeta n e, sprintf "%s := %s" n (to_s e), None)
@@ -127,35 +118,28 @@ let work (session: Session) s =
         let i = ib |> ImageBuilder.render Color.White |> List.singleton |> RenderedImages in
         (session, "(image)", Some i)
       | Regex @".*@b_rdct\s*((?:\s-noimage|\s-ni)?)\s+(.*)" [b; t] ->
-        match (session.parse t |> session.eval) with
-          | (i, Some res) ->
+        let evl = session.parse t 
+               |> session.evalAsync
+               |> Async.withTimeout (TimeSpan.FromSeconds 30.0)
+               |> Async.run
+        in
+        match evl with
+          | Some (i, Some res) ->
             if (String.IsNullOrEmpty b) then 
-              (session, to_s res, Some i)
+              (session, to_s res, i () |> Some)
             else
               (session, to_s res, None)
-          | (i, None) -> (session, "Infinite reduction", Some i)
+          | Some (i, None) -> (session, "Infinite reduction", i () |> Some)
+          | None -> (session, "Computation timeout", None)
       | _ -> (session, "Wrong syntax", None)
   with
     | LambdaException (msg, i, _) -> (session, msg, i)
     | e -> (session, String.Format("Native error: {0}", e.Message), None)
 
-let withTimeout seconds a f =
-  Async.AwaitFun(a, f, seconds * 1000)
-
 let reply (ss: Session ref) (s: Status) =
   let session = !ss in
   async {
-    let! cr = withTimeout 30 
-                          (fun () -> work session (s.Text.Replace("&amp;","&"))) 
-                          (function 
-                             | (_, _, Some (RenderedImages xs)) -> xs |> List.iter (fun x -> x.Dispose())
-                             | _ -> ()
-                          ) in
-    let (newSession, msg, img) = 
-      match cr with
-        | Some res -> res
-        | None -> (session, "Computation timeout", None)
-    in
+    let (newSession, msg, img) = work session (s.Text.Replace("&amp;","&")) in
     let txt = createText ("@" + s.User.ScreenName) msg img in
     let id = Nullable s.Id in
     try

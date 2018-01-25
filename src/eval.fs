@@ -34,8 +34,8 @@ let rec eval hist = function
   | TmApp (TmFix, f) ->
     TmApp (f, TmApp (TmFix, f)) |> Some
   | TmApp (l, r) ->
-    match (eval hist l) with
+    match eval hist l with
       | Some l' -> TmApp (l', r) |> Some
-      | None -> eval hist r |> Option.map (fun x -> TmApp (l, x))
+      | None -> match eval hist r with Some x -> TmApp (l, x) |> Some | None -> None 
   | _ -> None
 

@@ -8,15 +8,6 @@ open Mono.Terminal
 let editor = new LineEditor ("lambda", 300)
 let inline scan prompt = editor.Edit(prompt, "")
 
-module Async =
-  begin
-    open Microsoft.FSharp.Control
-    
-    let inline child x = Async.StartChild x
-
-    let inline run x = Async.RunSynchronously x
- end
-
 module TwitterText =
   begin
     open FSharp.Data
@@ -57,9 +48,9 @@ module ImageHelper =
       let size = g.MeasureString (text, font) in
       (int32 size.Width, int32 size.Height)
 
-    let estimateFontSize lines = 
-      let wmax = lines |> List.map String.length |> List.max in
-      let h = List.length lines in
+    let estimateFontSize lengthes = 
+      let wmax = lengthes |> List.max in
+      let h = List.length lengthes in
       let wlen = (1000 * 2) / (wmax + 2) in
       let hlen = (1000 * 4) / (h + 2) in
       let len = 

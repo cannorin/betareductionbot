@@ -24,6 +24,11 @@ let (|Regex|_|) pattern input =
   if m.Success then Some(List.tail [ for g in m.Groups -> g.Value ])
   else None
 
+let (|DefaultValue|) dv x =
+  match x with
+    | Some v -> v
+    | None -> dv
+
 module List = 
   begin
     let rec takeToEnd n xs =
@@ -32,3 +37,24 @@ module List =
       else
         [xs]
   end
+
+module Async =
+  begin
+    open System.Threading
+    open System.Threading.Tasks
+    open Microsoft.FSharp.Control
+    open FSharp.Control.Reactive
+
+    let inline run x = Async.RunSynchronously x
+
+    let withTimeout (timeout : TimeSpan) a =
+      async {
+        try
+          let! child = Async.StartChild(a, int timeout.TotalMilliseconds) in
+          let! result = child in
+          return Some result
+        with
+          | :? TimeoutException -> return None
+      }
+end
+

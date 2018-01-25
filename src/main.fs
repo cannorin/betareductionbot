@@ -13,7 +13,12 @@ open System.Diagnostics
 open System.IO
 open System.Reflection
 open System.Threading
+open System.Threading.Tasks
+
+open FSharp.Control.Reactive
+open Microsoft.FSharp.Control
 open Microsoft.FSharp.Collections
+
 open Mono.Terminal
 open ImageBuilder
 
@@ -58,21 +63,22 @@ let rec loop (session : Session) =
             cprintfn ConsoleColor.DarkGray "%s := %s" n (to_s e);
             session.defMeta n e
           | t ->
-            let (i, res) = session.parse t |> session.eval in
-            match res with
-              | Some x ->
-                if sprintf "@cannorin %s [xxx]" (to_s x) |> TwitterText.isValid then
-                  cprintfn ConsoleColor.DarkGray "%s" (to_s x)
-                else
-                  cprintfn ConsoleColor.Red "the result is too big!" 
-              | None ->
-                cprintfn ConsoleColor.Red "infinite reduction!"
-            match i with
-              | RenderedImages xs ->
-                //let (enc, eprms) = ImageHelper.genSaveParams ImageFormat.Jpeg [(Encoder.Quality, 0L)] in
-                //xs |> List.iteri (fun i x -> x.Save(sprintf "a%i.jpg" i, enc, eprms));
-                xs |> List.iter (fun x -> x.Dispose())
-              | _ -> ()
+            let evl = session.parse t 
+                   |> session.evalAsync
+                   |> Async.withTimeout (TimeSpan.FromSeconds 5.0)
+                   |> Async.run
+            in
+            match evl with
+              | Some (_, res) ->
+                match res with
+                  | Some x ->
+                    if sprintf "@cannorin %s [xxx]" (to_s x) |> TwitterText.isValid then
+                      cprintfn ConsoleColor.DarkGray "%s" (to_s x)
+                    else
+                      cprintfn ConsoleColor.Red "the result is too big!" 
+                  | None ->
+                    cprintfn ConsoleColor.Red "infinite reduction!"
+              | None -> cprintfn ConsoleColor.Red "computation timeout"
             session
 #if !DEBUG
       with
@@ -86,6 +92,10 @@ let rec loop (session : Session) =
 [<EntryPoint>]
 let rec main argv =
   match (argv |> Array.toList) with
+    | "--measure" ::_ ->
+      let s = Session None in
+      s.parse "&pow 2 10" |> s.evalAsync |> Async.run |> ignore;
+      0
     | "--debug" :: _
     | "--repl" :: _ ->
       printfn "beta reduction repl"
@@ -111,6 +121,6 @@ let rec main argv =
           cprintf ConsoleColor.Red "error: process is a duplicate"
         0
       finally
-        File.Delete lockfile;
+        File.Delete lockfile |> ignore;
         0
     

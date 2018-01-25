@@ -28,6 +28,13 @@ let rec fvOf (t : Term) =
     | TmAbs (b, _) -> fvOf b
     | _ -> set []
 
+let rec estimateStringSize = function
+  | TmAbs (a, b) -> 5 + estimateStringSize a
+  | TmApp (l, TmApp(a, b)) -> 2 + estimateStringSize l + estimateStringSize (TmApp (a, b))
+  | TmApp (l, r) -> estimateStringSize l + estimateStringSize r
+  | TmFix -> 6
+  | _ -> 1
+
 let rec termToString cs fvs = function
   | TmFreeVar c -> to_s c
   | TmBoundVar i -> cs |> List.item i |> to_s

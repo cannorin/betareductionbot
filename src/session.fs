@@ -11,9 +11,11 @@ open System
 open System.Drawing
 open System.Drawing.Text
 open System.Drawing.Imaging
+open System.Threading
 
 open Microsoft.FSharp.Collections
 open Microsoft.FSharp.Control
+open FSharp.Control.Reactive
 
 let private sprintTermPart parent t =
   let fvs = fvOf parent in
@@ -35,10 +37,12 @@ let private sprintTermPart parent t =
   dig [] parent |> List.tryHead
 
 let rec private renderHist hist iro fo =
-  let hs = hist |> List.map to_s in
-  let fs = fo ?| (hs |> ImageHelper.estimateFontSize) in
+  let ls = hist |> List.map estimateStringSize in
+  let fs = fo ?| (ls |> ImageHelper.estimateFontSize) in
   use font = ImageHelper.stixFont fs in
-  let (ex, ey) = hs |> String.concat Environment.NewLine |> ImageHelper.measure font in
+  let (ex, ey) = ls |> List.map (fun i -> String.init i (fun _ -> "x"))
+                    |> String.concat Environment.NewLine
+                    |> ImageHelper.measure font in
 
   if ex < 4000 && ey >= 4000 && ey / 4000 < 4 then
     let n = ey / 4000 + 1 in
@@ -135,26 +139,39 @@ type Session =
   member this.parse x =
     parse x |> toUTerm [] this.dict
 
+  member this.evalAsync x =
+    async {
+      let hist = ref HashedList.empty in
+      let rec e x i =
+        async {
+          if i > 100000 then
+            do raise <| LambdaException ("Computation exceeded 100000 steps", None, ErrorState.Unreducible);
+            return Choice2Of2 x
+          else
+            try
+              let xo = eval !hist x in
+              do hist := !hist |> HashedList.add x;
+              return!
+                match xo with
+                  | Some x -> e x (i + 1)
+                  | None -> async { return Choice1Of2 x }
+            with
+              | InfLoopFound x' ->
+                do hist := !hist |> HashedList.add x;
+                return Choice2Of2 x'
+        }
+      in
+      let! result = e x 0 in
+      let h = !hist in
+      return 
+        match result with
+          | Choice1Of2 x -> ((fun () -> renderHist (h.list |> List.rev) None None), Some x)
+          | Choice2Of2 x -> ((fun () -> renderHist (h.list |> List.rev) (Some x) None), None)
+    }
+
   member this.eval x =
-    let hist = ref HashedList.empty in
-    let rec e x i =
-      if i > 100000 then
-        LambdaException ("Computation timeout", None, ErrorState.Unreducible) |> raise
-      else
-        try
-          match (eval !hist x) with
-            | Some x' ->
-              hist := !hist |> HashedList.add x;
-              e x' (i+1)
-            | None ->
-              hist := !hist |> HashedList.add x;
-              (renderHist ((!hist).list |> List.rev) None None, Some x)
-        with
-          | InfLoopFound x' ->
-            hist := !hist |> HashedList.add x;
-            (renderHist ((!hist).list |> List.rev) (Some x') None, None)
-    in
-    e x 0
+    let (render, res) = this.evalAsync x |> Async.run in
+    (render(), res)
 
   member this.defMeta name e =
     if this.dict |> Map.containsKey name then
