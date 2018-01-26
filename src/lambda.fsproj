@@ -29,11 +29,10 @@
     <PlatformTarget>AnyCPU</PlatformTarget>
     <Tailcalls>true</Tailcalls>
   </PropertyGroup>
-  <Import Project="$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\3.1\Framework\v4.0\Microsoft.FSharp.Targets" />
+  <Import Project="..\packages\FSharp.Compiler.Tools.4.1.29\tools\Microsoft.FSharp.Targets" />
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="mscorlib" />
-    <Reference Include="FSharp.Core" />
     <Reference Include="System.Core" />
     <Reference Include="System.Numerics" />
     <Reference Include="CoreTweet">
@@ -72,6 +71,9 @@
     </Reference>
     <Reference Include="System.Xml" />
     <Reference Include="System.Runtime.Serialization" />
+    <Reference Include="FSharp.Core">
+      <HintPath>../packages/FSharp.Core.4.3.2/lib/net45/FSharp.Core.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="prelude.fs" />
