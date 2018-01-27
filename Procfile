@@ -1,1 +1,1 @@
-bot: mono lambda.exe
+bot: mono src/bin/Release/lambda.exe
